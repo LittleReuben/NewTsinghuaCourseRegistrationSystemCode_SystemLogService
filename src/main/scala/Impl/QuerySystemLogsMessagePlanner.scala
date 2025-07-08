@@ -3,6 +3,7 @@ package Impl
 
 import Objects.UserAccountService.SafeUserInfo
 import APIs.UserAuthService.VerifyTokenValidityMessage
+import APIs.UserAccountService.QuerySafeUserInfoByTokenMessage
 import APIs.UserAccountService.QuerySafeUserInfoByUserIDListMessage
 import Objects.SystemLogService.SystemLogEntry
 import Objects.UserAccountService.UserRole
@@ -51,6 +52,14 @@ case class QuerySystemLogsMessagePlanner(
              IO.raiseError(new Exception("管理员权限验证失败")) 
            else
              IO(logger.info("管理员权限验证成功"))
+
+      // Step 1.2: Verify user role is admin
+      _ <- IO(logger.info("开始验证管理员角色权限"))
+      safeUserInfo <- QuerySafeUserInfoByTokenMessage(adminToken).send
+      _ <- if (safeUserInfo.role != UserRole.SuperAdmin) 
+             IO.raiseError(new Exception("管理员角色验证失败")) 
+           else 
+             IO(logger.info("管理员角色验证成功"))
 
       // Step 2.1: Validate userIDs if provided
       _ <- if (userIDs.nonEmpty) 
@@ -137,3 +146,5 @@ case class QuerySystemLogsMessagePlanner(
     parameters.toList
   }
 }
+
+// 模型无法修复编译错误的原因: QuerySafeUserInfoByTokenMessage 未提供具体的定义或导入路径
