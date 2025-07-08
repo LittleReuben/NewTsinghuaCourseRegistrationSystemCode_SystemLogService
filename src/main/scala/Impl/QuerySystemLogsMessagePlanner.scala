@@ -1,6 +1,5 @@
 package Impl
 
-
 import Objects.UserAccountService.SafeUserInfo
 import APIs.UserAuthService.VerifyTokenValidityMessage
 import APIs.UserAccountService.QuerySafeUserInfoByTokenMessage
@@ -18,21 +17,6 @@ import io.circe.syntax._
 import io.circe.generic.auto._
 import cats.effect.IO
 import cats.implicits._
-import Common.Serialize.CustomColumnTypes.{decodeDateTime, encodeDateTime}
-import io.circe._
-import io.circe.syntax._
-import io.circe.generic.auto._
-import org.joda.time.DateTime
-import cats.implicits.*
-import Common.DBAPI._
-import Common.API.{PlanContext, Planner}
-import cats.effect.IO
-import Common.Object.SqlParameter
-import Common.Serialize.CustomColumnTypes.{decodeDateTime,encodeDateTime}
-import Common.ServiceUtils.schemaName
-import Objects.UserAccountService.UserRole
-import cats.implicits.*
-import Common.Serialize.CustomColumnTypes.{decodeDateTime,encodeDateTime}
 
 case class QuerySystemLogsMessagePlanner(
                                           adminToken: String,
@@ -55,11 +39,15 @@ case class QuerySystemLogsMessagePlanner(
 
       // Step 1.2: Verify user role is admin
       _ <- IO(logger.info("开始验证管理员角色权限"))
-      safeUserInfo <- QuerySafeUserInfoByTokenMessage(adminToken).send
-      _ <- if (safeUserInfo.role != UserRole.SuperAdmin) 
-             IO.raiseError(new Exception("管理员角色验证失败")) 
-           else 
-             IO(logger.info("管理员角色验证成功"))
+      safeUserInfoOpt <- QuerySafeUserInfoByTokenMessage(adminToken).send
+      _ <- safeUserInfoOpt match {
+        case None => IO.raiseError(new Exception("管理员角色验证失败"))
+        case Some(safeUserInfo) =>
+          if (safeUserInfo.role != UserRole.SuperAdmin) 
+            IO.raiseError(new Exception("管理员角色验证失败")) 
+          else 
+            IO(logger.info("管理员角色验证成功"))
+      }
 
       // Step 2.1: Validate userIDs if provided
       _ <- if (userIDs.nonEmpty) 
@@ -146,5 +134,4 @@ case class QuerySystemLogsMessagePlanner(
     parameters.toList
   }
 }
-
 // 模型无法修复编译错误的原因: QuerySafeUserInfoByTokenMessage 未提供具体的定义或导入路径
